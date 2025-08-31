@@ -48,7 +48,7 @@ def _mtime(p: Path) -> float:
 # IO utils
 # ---------------------------
 def _read_table_maybe(base: Path) -> pd.DataFrame:
-    """base가 확장자 없으면 .csv → .parquet 순으로 시도."""
+
     try:
         if base.suffix:
             return _read_by_suffix(base)
@@ -79,7 +79,7 @@ def _normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
 # Artifact loading (dict-aware)
 # ---------------------------
 def _load_artifact(path: Path, key: str):
-    """joblib에서 저장된 dict({'model','preproc',...}) 또는 모델 객체를 로드."""
+
     if joblib_load is None or not path.exists():
         return None
     now = time.time()
@@ -157,7 +157,7 @@ def _predict_proba_safe(model, X_nd: np.ndarray) -> Optional[np.ndarray]:
 _ID_COLS = {"user_id","adm_cd2","adm_cd","adm_nm","dt","dt_hour","date","time"}
 
 def _select_fields(df: pd.DataFrame, select: str) -> pd.DataFrame:
-    """토큰 기반 열 간소화. 위험도/핵심키는 항상 유지."""
+
     if df.empty or not select:
         return df
     tokens = [t.strip().lower() for t in select.split(",") if t.strip()]
@@ -197,11 +197,7 @@ def _safe_topk_users(group: pd.DataFrame, sort_by: str, k: int, descending: bool
     return df[base_cols].head(max(0, int(k))).to_dict(orient="records")
 
 def _extract_sections(row: pd.Series, select: str = "meta,health,self_report"):
-    """
-    한 유저(row)에서 meta/health/self_report 섹션을 best-effort로 추출.
-    - 컬럼명이 포함하는 토큰으로 버킷팅 (예: 'meta', 'health', 'self', 'report')
-    - 못 찾으면 빈 dict 반환
-    """
+
     if row is None or row.empty:
         return {}, {}, {}
 
@@ -251,10 +247,7 @@ def get_all(
     user_order: str = Query("desc", description="asc | desc"),
     select: str = Query("meta,health,self_report", description="포함할 컬럼군 힌트(쉼표로 분리)"),
 ):
-    """
-    personal_features_infer_latest + backend/models 최신 아티팩트(dict)를 로드해 즉시 추론,
-    동별 요약(summary.mean.{risk_any, risk_logreg, risk_xgb})과 선택적 상위 사용자 목록을 반환.
-    """
+    
     try:
         # 1) 피처 로드
         feats = _read_table_maybe(FEATURES_BASE)
@@ -403,23 +396,7 @@ def predict_user(
     user_id: str,
     select: str = Query("meta,health,self_report", description="섹션 힌트(쉼표)"),
 ):
-    """
-    단일 유저 위험도와 부가 정보 반환.
-    - features: data/train/personal_features_infer_latest
-    - models: backend/models/{logreg,xgb}_personal_latest.joblib  (dict: {'model','preproc',...})
-    - 전처리: 학습 시 저장한 preproc 그대로 적용
-    응답 예:
-    {
-      "user_id": "...",
-      "dt_hour": "...",
-      "risk_logreg": 0.44,
-      "risk_xgb": 0.50,
-      "risk_any": 0.47,
-      "meta": {...},
-      "health": {...},
-      "self_report": {...}
-    }
-    """
+
     try:
         feats = _read_table_maybe(FEATURES_BASE)
         feats = _normalize_columns(feats)

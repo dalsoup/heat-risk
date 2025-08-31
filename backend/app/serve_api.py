@@ -17,11 +17,11 @@ app = FastAPI(
 )
 
 # ---------------------------------------------------
-# CORS 허용 (개발 중에는 * 로 열어두고, 운영 시 도메인 제한 권장)
+# CORS 허용 
 # ---------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # 운영 시 ["https://내도메인.com"] 으로 제한 권장
+    allow_origins=["*"],   
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

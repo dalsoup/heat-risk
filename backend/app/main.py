@@ -18,9 +18,7 @@ except Exception:
         API_PREFIX = ""
         DEBUG = True
 
-        # 운영에서는 환경변수/설정에서 관리하세요.
         def cors_origins_list(self) -> List[str]:
-            # 개발 기본 오리진들
             return ["http://localhost:3000", "http://127.0.0.1:3000"]
     settings = _FallbackSettings()  # type: ignore
 
@@ -70,7 +68,6 @@ app.add_middleware(
 
 # --------------------------------
 # Routers
-# - 존재하지 않아도 전체 앱이 뜨도록 try/except
 # --------------------------------
 from .routers import health as _health  # type: ignore
 app.include_router(_health.router, prefix=API_PREFIX)
