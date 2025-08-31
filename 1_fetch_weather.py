@@ -36,10 +36,7 @@ def _ts() -> str:
     return datetime.now(KST).strftime("%Y%m%d%H%M%S")
 
 def _save_json_with_latest(prefix: str, nx: int, ny: int, payload: dict):
-    """
-    prefix: 'ncst' | 'ufc' | 'vfc'
-    파일: data/weather_raw/{prefix}_{nx}_{ny}_{ts}.json + {prefix}_{nx}_{ny}_latest.json
-    """
+ 
     ts = _ts()
     p_ts = RAW_DIR / f"{prefix}_{nx}_{ny}_{ts}.json"
     p_latest = RAW_DIR / f"{prefix}_{nx}_{ny}_latest.json"
@@ -50,10 +47,7 @@ def _save_json_with_latest(prefix: str, nx: int, ny: int, payload: dict):
     print(f"[SAVE] raw -> {p_ts.name} (and {p_latest.name})")
 
 def _save_df_with_latest(prefix: str, nx: int, ny: int, df: pd.DataFrame):
-    """
-    prefix: 'ncst' | 'ufc' | 'vfc'
-    파일: data/weather_parsed/{prefix}_{nx}_{ny}_{ts}.csv + {prefix}_{nx}_{ny}_latest.csv
-    """
+ 
     ts = _ts()
     p_ts = PARSED_DIR / f"{prefix}_{nx}_{ny}_{ts}.csv"
     p_latest = PARSED_DIR / f"{prefix}_{nx}_{ny}_latest.csv"
@@ -62,10 +56,7 @@ def _save_df_with_latest(prefix: str, nx: int, ny: int, df: pd.DataFrame):
     print(f"[SAVE] parsed -> {p_ts.name} (and {p_latest.name})")
 
 def _save_df_global(prefix: str, df: pd.DataFrame):
-    """
-    prefix: 'ncst' | 'ufc' | 'vfc' (by_dong 결합본)
-    파일: data/weather_parsed/{prefix}_by_dong_{ts}.csv + {prefix}_by_dong_latest.csv
-    """
+
     ts = _ts()
     p_ts = PARSED_DIR / f"{prefix}_by_dong_{ts}.csv"
     p_latest = PARSED_DIR / f"{prefix}_by_dong_latest.csv"
@@ -77,10 +68,7 @@ def _save_df_global(prefix: str, df: pd.DataFrame):
 # Parsers (timezone-safe)
 # -------------------------
 def _parse_ncst_to_df(items: list) -> pd.DataFrame:
-    """
-    초단기실황(getUltraSrtNcst)
-    - 결과: 단일 시점(dt, tz=KST) 1행, 각 category가 열
-    """
+
     if not items:
         return pd.DataFrame()
 
@@ -102,10 +90,7 @@ def _parse_ncst_to_df(items: list) -> pd.DataFrame:
     return wide[cols]
 
 def _parse_fcst_to_df(items: list) -> pd.DataFrame:
-    """
-    초단기예보/단기예보 공통
-    - 결과: dt(여러 시점, tz=KST), 각 category가 열
-    """
+
     if not items:
         return pd.DataFrame()
 
@@ -157,7 +142,7 @@ def _append_grid_cols(df: pd.DataFrame) -> pd.DataFrame:
 # Per-grid fetch
 # -------------------------
 def _fetch_one_grid(nx: int, ny: int):
-    """그리드 1개에 대해 3종 호출 및 파싱"""
+
     # 초단기실황
     ncst_json = get_ultra_nowcast(nx, ny)
     _save_json_with_latest("ncst", nx, ny, ncst_json)
