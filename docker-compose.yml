@@ -1,0 +1,49 @@
+version: "3.9"
+
+services:
+  api:
+    build: ./backend
+    container_name: heatrisk-api
+    environment:
+      # --- Backend config ----------------------------
+      SECRET_KEY: ${SECRET_KEY:-change_me_in_prod}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      # SQLite (기본). Postgres 쓰려면 아래 DATABASE_URL 주석 해제 및 db 서비스 사용
+      DATABASE_URL: ${DATABASE_URL:-sqlite:///./heatrisk.db}
+      MODEL_LOGREG_PATH: ${MODEL_LOGREG_PATH:-/app/models/logreg_personal_latest.joblib}
+      MODEL_XGB_PATH: ${MODEL_XGB_PATH:-/app/models/xgb_personal_latest.joblib}
+      INFER_PATH: ${INFER_PATH:-/app/data/train/personal_features_infer_latest.csv}
+    volumes:
+      - ./backend/models:/app/models:rw
+      - ./data:/app/data:rw
+    ports:
+      - "8000:8000"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    # depends_on:
+    #   - db
+
+  web:
+    build: ./frontend
+    container_name: heatrisk-web
+    environment:
+      NEXT_PUBLIC_API_BASE: ${NEXT_PUBLIC_API_BASE:-http://localhost:8000}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+  # --- OPTIONAL: Postgres 사용 시 주석 해제하고 DATABASE_URL 교체 ---
+  # db:
+  #   image: postgres:15
+  #   container_name: heatrisk-db
+  #   environment:
+  #     POSTGRES_USER: ${POSTGRES_USER:-postgres}
+  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+  #     POSTGRES_DB: ${POSTGRES_DB:-heatrisk}
+  #   volumes:
+  #     - db_data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+
+volumes:
+  db_data:
