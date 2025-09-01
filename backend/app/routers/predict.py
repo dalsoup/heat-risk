@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pathlib import Path
 from typing import Optional, Tuple, Dict
 import os
+import math
 import pandas as pd
 import numpy as np
 
@@ -13,7 +14,8 @@ try:
 except Exception:
     joblib_load = None
 
-router = APIRouter(tags=["predict"])
+# ✅ prefix 추가: /predict
+router = APIRouter(prefix="/predict", tags=["predict"])
 
 # ---------- 경로 해석 ----------
 PROJECT_BACKEND_DIR = Path(__file__).resolve().parents[2]  # .../backend
@@ -36,6 +38,31 @@ DEFAULT_MODEL_DIR = PROJECT_ROOT / "backend" / "models"
 DEFAULT_LOGREG = DEFAULT_MODEL_DIR / "logreg_personal_latest.joblib"
 DEFAULT_XGB    = DEFAULT_MODEL_DIR / "xgb_personal_latest.joblib"
 
+# ---------- 전역(지연 로딩용) ----------
+LOGREG = None
+XGB = None
+PREPROC = None
+
+# ---------- 유틸 ----------
+def _nan_to_none(obj):
+    """재귀적으로 NaN/±Inf를 None으로 치환"""
+    if isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return obj
+    if isinstance(obj, dict):
+        return {k: _nan_to_none(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_nan_to_none(v) for v in obj]
+    if isinstance(obj, tuple):
+        return tuple(_nan_to_none(v) for v in obj)
+    try:
+        import pandas as pd  # noqa
+        if obj is not None and pd.isna(obj):
+            return None
+    except Exception:
+        pass
+    return obj
 
 # ---------- 파일/모델 로딩 ----------
 def _resolve_features_latest() -> Path:
@@ -92,7 +119,6 @@ def _unpack_artifact(obj) -> Tuple[object, Optional[dict]]:
         return m, pre
     return obj, None
 
-
 def _load_models() -> Tuple[object, Optional[object], dict]:
     logreg_path = Path(ENV_LOGREG) if ENV_LOGREG else DEFAULT_LOGREG
     xgb_path    = Path(ENV_XGB)    if ENV_XGB    else DEFAULT_XGB
@@ -111,10 +137,10 @@ def _load_models() -> Tuple[object, Optional[object], dict]:
             XGB = None  # xgboost 불가 시 LR만 사용
     return LOGREG, XGB, PREPROC
 
-
-# 전역 로드(앱 시작 시 1회)
-LOGREG, XGB, PREPROC = _load_models()
-
+def _ensure_models():
+    global LOGREG, XGB, PREPROC
+    if LOGREG is None or PREPROC is None:
+        LOGREG, XGB, PREPROC = _load_models()
 
 # ---------- 전처리 ----------
 def _apply_preprocess(df: pd.DataFrame, preproc: dict) -> np.ndarray:
@@ -163,13 +189,15 @@ def _predict_proba_safe(model, X_nd: np.ndarray) -> Optional[np.ndarray]:
         pass
     return None
 
-
 # ---------- 섹션 추출(DetailModal용) ----------
 def _extract_sections(row: pd.Series, select: str = "meta,health,self_report") -> Tuple[Dict, Dict, Dict]:
     """
     한 유저(row)에서 meta/health/self_report 섹션을 best-effort로 추출.
     - 컬럼명 토큰 매칭 기반 버킷팅
     """
+    if not isinstance(select, str):
+        select = "meta,health,self_report"
+
     if row is None or row.empty:
         return {}, {}, {}
 
@@ -179,7 +207,6 @@ def _extract_sections(row: pd.Series, select: str = "meta,health,self_report") -
     want_self   = any(t in ("self", "self_report", "report") for t in toks)
 
     meta, health, self_report = {}, {}, {}
-
     for k, v in row.to_dict().items():
         lk = str(k).lower()
 
@@ -190,13 +217,11 @@ def _extract_sections(row: pd.Series, select: str = "meta,health,self_report") -
 
         if want_meta and ("meta" in lk):
             meta[k] = v; continue
-
         if want_health and ("health" in lk or lk in {
             "hr_bpm", "stress_0_1", "symptom_score", "hr_base", "fitness", "vulnerability",
             "wbgt_c", "hi_c", "temp_c", "rh_pct", "hours_wbgt_ge28_last6h"
         }):
             health[k] = v; continue
-
         if want_self and ("self" in lk or "report" in lk or lk in {"reported", "last_dt"}):
             self_report[k] = v; continue
 
@@ -208,13 +233,14 @@ def _extract_sections(row: pd.Series, select: str = "meta,health,self_report") -
 
     return meta, health, self_report
 
-
-# ---------- API: /predict ----------
+# ---------- API ----------
 @router.get("/predict")
 def get_predict(
     user_id: str = Query(..., description="user_id in personal_features_infer_latest"),
     select: str = Query("meta,health,self_report", description="섹션 힌트(쉼표)"),
 ):
+    _ensure_models()  # ✅ 요청 시 로드
+
     # 1) 최신 피처 로드
     feats_path = _resolve_features_latest()
     df = _read_any(feats_path)
@@ -262,8 +288,19 @@ def get_predict(
     row = row_df.iloc[0]
     meta, health, self_report = _extract_sections(row, select)
 
-    # 5) 응답
-    return {
+    # 5) 응답 (NaN/Inf 정리)
+    if risk_logreg is not None and (math.isnan(risk_logreg) or math.isinf(risk_logreg)):
+        risk_logreg = None
+    if risk_xgb is not None and (math.isnan(risk_xgb) or math.isinf(risk_xgb)):
+        risk_xgb = None
+    if risk_any is not None and (math.isnan(risk_any) or math.isinf(risk_any)):
+        risk_any = None
+
+    meta = _nan_to_none(meta or {})
+    health = _nan_to_none(health or {})
+    self_report = _nan_to_none(self_report or {})
+
+    out = {
         "user_id": str(user_id),
         "dt_hour": dt_val,
         "risk_logreg": risk_logreg,
@@ -273,3 +310,18 @@ def get_predict(
         "health": health or None,
         "self_report": self_report or None,
     }
+    return _nan_to_none(out)
+
+@router.get("/me")
+def predict_me():
+    _ensure_models()  # ✅ 요청 시 로드
+    feats_path = _resolve_features_latest()
+    df = _read_any(feats_path)
+    if "user_id" not in df.columns:
+        raise HTTPException(status_code=500, detail="Features table missing 'user_id'.")
+    sort_candidates = [c for c in ["risk_any","risk_logreg","risk_xgb","risk_score"] if c in df.columns]
+    if sort_candidates:
+        df = df.sort_values(by=sort_candidates[0], ascending=False)
+    row = df.iloc[0]
+    # 🔧 select 명시해서 Query 객체가 넘어가지 않도록
+    return get_predict(user_id=str(row["user_id"]), select="meta,health,self_report")

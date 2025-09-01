@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+/* Base: 라이트 고정 + 배경/글자 */
+@layer base {
+  :root { color-scheme: light; }
+  html, body { height: 100%; }
+  body { background: #f2f3f5; color: #111827; }
+}
+
+/* (원하면) 커스텀 유틸/컴포넌트
+@layer components {
+  .card { @apply rounded-2xl bg-white shadow-sm p-4; }
+}
+*/
