@@ -1,4 +1,3 @@
-# fetch_weather.py — full replacement (ALL DONGS)
 import os
 import json
 import time
