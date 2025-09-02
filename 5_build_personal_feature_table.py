@@ -1,5 +1,3 @@
-# build_personal_feature_table.py
-# 개인 맞춤 학습/시연용 피처 테이블 조립 (개인×시간)
 import os
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
@@ -23,8 +21,8 @@ F_WEATHER = Path(os.getenv("PERSONAL_F_WEATHER", FEAT_DIR / "hourly_features_rea
 F_USERS   = Path(os.getenv("PERSONAL_F_USERS",   LABEL_DIR / "individual_users_latest.csv"))
 F_WEAR    = Path(os.getenv("PERSONAL_F_WEAR",    LABEL_DIR / "individual_wearable_latest.csv"))
 F_SELF    = Path(os.getenv("PERSONAL_F_SELF",    LABEL_DIR / "individual_selfreport_latest.csv"))
-F_STATIC  = Path(os.getenv("PERSONAL_F_STATIC",  DATA_DIR / "static.csv"))  # optional
-F_PATIENT = Path(os.getenv("PERSONAL_F_PATIENT", LABEL_DIR / "patients_hourly_latest.csv"))  # optional
+F_STATIC  = Path(os.getenv("PERSONAL_F_STATIC",  DATA_DIR / "static.csv"))  
+F_PATIENT = Path(os.getenv("PERSONAL_F_PATIENT", LABEL_DIR / "patients_hourly_latest.csv")) 
 
 # 출력 파일
 TS = datetime.now(KST).strftime('%Y%m%d%H%M%S')
@@ -34,11 +32,11 @@ OUT_INFER_TS = OUT_DIR / f"personal_features_infer_{TS}.csv"
 OUT_INFER    = OUT_DIR / "personal_features_infer_latest.csv"
 
 # 파라미터
-RECENT_DAYS = os.getenv("PERSONAL_RECENT_DAYS", "")  # "" 이면 전체
+RECENT_DAYS = os.getenv("PERSONAL_RECENT_DAYS", "")  
 RECENT_DAYS = int(RECENT_DAYS) if str(RECENT_DAYS).strip() != "" else None
 
-# 라벨 이진화 임계
-PATIENT_POSITIVE_IF_GT = int(os.getenv("PATIENT_POSITIVE_IF_GT", "0"))  # >0 면 1
+# 라벨 이진화 임계 (patient_count > 임계 → 1)
+PATIENT_POSITIVE_IF_GT = int(os.getenv("PATIENT_POSITIVE_IF_GT", "0")) 
 
 # -------------------------
 # Helpers
@@ -58,7 +56,6 @@ def _minmax01(x):
     return np.clip((x - mn) / (mx - mn), 0.0, 1.0)
 
 def _now_floor_naive_kst() -> pd.Timestamp:
-    """KST 현재시각 정각을 'naive pandas Timestamp'로 반환 (df의 dt_hour가 naive일 때 비교 안전)."""
     kst_now = datetime.now(KST).replace(minute=0, second=0, microsecond=0)
     return pd.Timestamp(kst_now.replace(tzinfo=None))
 
@@ -103,14 +100,12 @@ for need, df, name in [
     if missing:
         raise SystemExit(f"{name} missing columns: {missing}")
 
-# 최근 N일만 사용(옵션)
 if RECENT_DAYS:
     cutoff = max(wth["dt_hour"].max(), wrb["dt_hour"].max(), srf["dt_hour"].max()) - pd.Timedelta(days=RECENT_DAYS)
     wth = wth[wth["dt_hour"] >= cutoff].copy()
     wrb = wrb[wrb["dt_hour"] >= cutoff].copy()
     srf = srf[srf["dt_hour"] >= cutoff].copy()
 
-# 누수 방지: 미래 시간 제거 (혹시 남아있을 수 있으니 보강)
 now_floor = _now_floor_naive_kst()
 for name, df in [("weather", wth), ("wearable", wrb), ("selfreport", srf)]:
     df = df[df["dt_hour"] <= now_floor].copy()
@@ -154,16 +149,42 @@ ux["hour"] = ux["dt_hour"].dt.hour
 ux["dow"]  = ux["dt_hour"].dt.dayofweek
 
 # -------------------------
-# 6) Attach hard label from patients_hourly (optional)
+# 6) Attach labels from patients_hourly (has_patient & hard_label)
 # -------------------------
 if not pat.empty:
-    if {"adm_cd2", "dt_hour", "patient_count"}.issubset(pat.columns):
+    # 표준화
+    if "dt_hour" in pat.columns:
         pat["dt_hour"] = _to_dt(pat["dt_hour"])
-        pat_sl = pat[["adm_cd2", "dt_hour", "patient_count"]].copy()
-        ux = pd.merge(ux, pat_sl, on=["adm_cd2", "dt_hour"], how="left")
-        ux["hard_label"] = (ux["patient_count"].fillna(0) > PATIENT_POSITIVE_IF_GT).astype("Int64")
+    req_cols = {"adm_cd2", "dt_hour"}
+    if not req_cols.issubset(pat.columns):
+        print("[WARN] patients file lacks (adm_cd2, dt_hour). Skip labels.")
     else:
-        print("[WARN] patients file lacks required columns; skip labels.")
+        keep_cols = ["adm_cd2", "dt_hour"]
+        # 있을 수 있는 라벨/수치들
+        if "patient_count" in pat.columns:
+            keep_cols.append("patient_count")
+        if "has_patient" in pat.columns:
+            keep_cols.append("has_patient")
+        pat_sl = pat[keep_cols].copy()
+
+        # 결합
+        ux = pd.merge(ux, pat_sl, on=["adm_cd2", "dt_hour"], how="left")
+
+        # has_patient 생성/정리: 우선순위 = (컬럼 존재) else (patient_count > threshold)
+        if "has_patient" in ux.columns:
+            ux["has_patient"] = ux["has_patient"].fillna(0).astype(int)
+        else:
+            pc = ux["patient_count"] if "patient_count" in ux.columns else 0
+            ux["has_patient"] = (pd.Series(pc).fillna(0) > PATIENT_POSITIVE_IF_GT).astype(int)
+
+        # hard_label은 patient_count 기준(항상 보존)
+        if "patient_count" in ux.columns:
+            ux["hard_label"] = (ux["patient_count"].fillna(0) > PATIENT_POSITIVE_IF_GT).astype(int)
+        else:
+            # patient_count 없으면 has_patient로 대체 생성
+            ux["hard_label"] = ux["has_patient"].astype(int)
+else:
+    print("[WARN] patients_hourly_latest.csv not found. No labels attached.")
 
 # -------------------------
 # 7) Cleanup / NA handling / sort
@@ -175,6 +196,12 @@ if drop_rows.any():
 
 # 정렬
 ux = ux.sort_values(["user_id", "dt_hour"]).reset_index(drop=True)
+
+# 라벨 요약(디버그)
+if "has_patient" in ux.columns:
+    print("[LABEL] has_patient pos:", int((ux["has_patient"]==1).sum()))
+if "hard_label" in ux.columns:
+    print("[LABEL] hard_label pos:", int((ux["hard_label"]==1).sum()))
 
 # -------------------------
 # 8) Save training table
