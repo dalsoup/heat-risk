@@ -54,3 +54,7 @@
   .tight-all { letter-spacing: -0.015em; }
   .tight-all * { letter-spacing: inherit; }
 }
+
+@keyframes wave {
+  to { transform: translateX(-50%); }
+}
