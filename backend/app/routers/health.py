@@ -1,4 +1,3 @@
-# backend/app/routers/health.py
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -100,10 +99,7 @@ def ok():
 
 @router.get("/summary", response_model=HealthSummary, summary="홈 화면용 요약")
 def get_summary():
-    """
-    프론트 홈 카드에 필요한 요약 정보를 한번에 반환.
-    수분 섭취량은 인메모리 상태(_HYDRATION_STATE)를 사용.
-    """
+ 
     return HealthSummary(
         location=Location(adm_cd2="1111051500", dong_name="청운효자동"),
         heat=Heat(
@@ -113,7 +109,7 @@ def get_summary():
         ),
         hydration=Hydration(
             current_ml=int(_HYDRATION_STATE.get("current_ml", 1000)),
-            goal_ml=_HYDRATION_GOAL,
+            goal_ml=_HYDRRATION_GOAL if (_HYDRRATION_GOAL := _HYDRATION_GOAL) else _HYDRATION_GOAL,  # keep simple, explicit
         ),
         shelters=Shelters(nearby_count=2, radius_m=500),
         vitals=Vitals(hr_bpm=99, hr_range=[70, 100], spo2_pct=95, spo2_range=[90, 100]),
@@ -123,10 +119,7 @@ def get_summary():
 
 @router.get("/alert", response_model=AlertResp, summary="실시간 경고(폴링용)")
 def get_alert():
-    """
-    개발용 기본값: 경고 없음.
-    테스트하고 싶으면 has_alert=True 로 변경 후 UI 확인.
-    """
+
     return AlertResp(
         has_alert=False,
         title="온열질환 주의!",
@@ -135,10 +128,7 @@ def get_alert():
 
 @router.post("/hydration/add", response_model=HydrationAddResp, summary="수분 섭취 기록")
 def add_hydration(payload: HydrationAddReq = Body(...)):
-    """
-    인메모리 섭취량을 증가시키고 최신 상태를 반환.
-    실제 서비스에서는 사용자별/일자별로 DB에 적재하세요.
-    """
+
     _HYDRATION_STATE["current_ml"] = int(_HYDRATION_STATE.get("current_ml", 0)) + int(payload.amount_ml)
     # 과도한 누적 방지: 목표의 300%에서 캡 (임시)
     cap = _HYDRATION_GOAL * 3
@@ -151,17 +141,13 @@ def add_hydration(payload: HydrationAddReq = Body(...)):
         updated_at=now_kst_iso(),
     )
 
-@router.post("/self-report", response_model=SelfReportResp, summary="자가진단 제출")
+@router.post("/self", response_model=SelfReportResp, summary="자가진단 제출")
 def self_report(payload: SelfReportReq):
-    """
-    간단한 규칙 기반 분류:
-      - 증상에 ["의식 저하","구토","극심한 두통"] 중 하나라도 포함 → severe
-      - 아니면 mild
-    """
-    syms = set(s.strip() for s in payload.symptoms or [])
-    severe = any(s in syms for s in ["의식 저하", "구토", "극심한 두통"])
 
-    if severe:
+    syms = set(s.strip() for s in (payload.symptoms or []))
+
+    severe_keys = {"의식 저하", "구토", "극심한 두통"}
+    if any(k in syms for k in severe_keys):
         return SelfReportResp(
             level="severe",
             headline="심각한 온열질환",

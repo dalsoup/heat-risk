@@ -37,7 +37,7 @@ export type SelfReportResult = {
 };
 
 export async function postSelfReport(symptoms: string[]): Promise<SelfReportResult> {
-  const r = await fetch("/api/health/self-report", {
+  const r = await fetch("/api/health/self", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ symptoms }),

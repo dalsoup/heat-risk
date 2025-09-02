@@ -9,7 +9,7 @@ export default function PointsPage() {
   ];
 
   return (
-    <div className="px-4 pb-28 space-y-4">
+    <div className="mt-3 px-4 pb-28 space-y-4">
       <section className="rounded-2xl bg-white shadow-sm border border-gray-100 p-4">
         <div className="text-sm text-gray-500">보유 포인트</div>
         <div className="text-2xl font-extrabold">12,056원</div>

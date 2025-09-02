@@ -18,14 +18,14 @@ export default function SelfReportPage() {
       setLoading(true);
       const payload = await postSelfReport(selected);
       const q = encodeURIComponent(JSON.stringify(payload));
-      router.push(`/self/result?data=${q}`); // ⬅️ 변경
+      router.push(`/self/result?data=${q}`);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="px-4 pb-28">
+    <div className="mt-3 px-4 pb-28 space-y-4">
       <div className="text-2xl font-extrabold text-rose-500 mt-4">온열질환 자가신고</div>
       <div className="mt-6 text-xl font-semibold leading-relaxed">현재 느껴지는 증상을 모두 체크해주세요.</div>
       <div className="mt-6 rounded-2xl bg-gray-100 p-4 space-y-4">

@@ -1,14 +1,56 @@
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css");
 @import "tailwindcss";
 
-/* Base: 라이트 고정 + 배경/글자 */
+@theme {
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+    system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Apple SD Gothic Neo",
+    "Noto Sans KR", "Malgun Gothic", "맑은 고딕", sans-serif;
+}
+
 @layer base {
   :root { color-scheme: light; }
   html, body { height: 100%; }
-  body { background: #f2f3f5; color: #111827; }
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    @apply font-sans antialiased;
+    background: #f2f3f5;
+    color: #111827;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+
+    letter-spacing: -0.011em;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    letter-spacing: -0.018em;
+  }
+
+  .text-xs, .text-sm {
+    letter-spacing: -0.008em;
+  }
+
+  code, pre, kbd, samp {
+    letter-spacing: 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+      "Liberation Mono", "Courier New", monospace;
+  }
 }
 
-/* (원하면) 커스텀 유틸/컴포넌트
 @layer components {
   .card { @apply rounded-2xl bg-white shadow-sm p-4; }
+  .btn-primary { @apply h-12 px-4 rounded-xl bg-emerald-700 text-white font-extrabold disabled:opacity-60; }
+  .btn-secondary { @apply h-12 px-4 rounded-xl bg-[#0B2A6F] text-white font-extrabold; }
 }
-*/
+
+@layer utilities {
+  .headline { @apply font-extrabold tracking-tight; }
+
+  .tracking-reset { letter-spacing: 0 !important; }
+
+  /* 섹션 전체를 더 타이트하게 하고 싶을 때:
+     <div class="tight-all"> ... </div> 처럼 사용 */
+  .tight-all { letter-spacing: -0.015em; }
+  .tight-all * { letter-spacing: inherit; }
+}

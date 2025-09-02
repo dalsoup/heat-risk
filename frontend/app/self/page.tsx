@@ -15,10 +15,10 @@ export default function SelfHome() {
   ];
 
   return (
-    <div className="space-y-4 px-4 pb-28">
+    <div className="mt-3 px-4 pb-28 space-y-4">
       {/* 상단 CTA */}
       <Link
-        href="/self-check/report"
+        href="/self/report"
         className="block rounded-2xl bg-rose-500 text-white text-center text-xl font-extrabold py-4"
       >
         온열질환 자가신고
