@@ -9,68 +9,68 @@
       "items": {
         "item": [
           {
-            "baseDate": "20250902",
-            "baseTime": "1500",
+            "baseDate": "20250903",
+            "baseTime": "1200",
             "category": "PTY",
             "nx": 61,
             "ny": 129,
             "obsrValue": "0"
           },
           {
-            "baseDate": "20250902",
-            "baseTime": "1500",
+            "baseDate": "20250903",
+            "baseTime": "1200",
             "category": "REH",
             "nx": 61,
             "ny": 129,
-            "obsrValue": "56"
+            "obsrValue": "55"
           },
           {
-            "baseDate": "20250902",
-            "baseTime": "1500",
+            "baseDate": "20250903",
+            "baseTime": "1200",
             "category": "RN1",
             "nx": 61,
             "ny": 129,
             "obsrValue": "0"
           },
           {
-            "baseDate": "20250902",
-            "baseTime": "1500",
+            "baseDate": "20250903",
+            "baseTime": "1200",
             "category": "T1H",
             "nx": 61,
             "ny": 129,
-            "obsrValue": "30.9"
+            "obsrValue": "29.2"
           },
           {
-            "baseDate": "20250902",
-            "baseTime": "1500",
+            "baseDate": "20250903",
+            "baseTime": "1200",
             "category": "UUU",
             "nx": 61,
             "ny": 129,
-            "obsrValue": "1.4"
+            "obsrValue": "-1.1"
           },
           {
-            "baseDate": "20250902",
-            "baseTime": "1500",
+            "baseDate": "20250903",
+            "baseTime": "1200",
             "category": "VEC",
             "nx": 61,
             "ny": 129,
-            "obsrValue": "286"
+            "obsrValue": "133"
           },
           {
-            "baseDate": "20250902",
-            "baseTime": "1500",
+            "baseDate": "20250903",
+            "baseTime": "1200",
             "category": "VVV",
             "nx": 61,
             "ny": 129,
-            "obsrValue": "-0.3"
+            "obsrValue": "1.1"
           },
           {
-            "baseDate": "20250902",
-            "baseTime": "1500",
+            "baseDate": "20250903",
+            "baseTime": "1200",
             "category": "WSD",
             "nx": 61,
             "ny": 129,
-            "obsrValue": "1.5"
+            "obsrValue": "1.6"
           }
         ]
       },

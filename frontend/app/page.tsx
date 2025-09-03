@@ -31,7 +31,6 @@ export default function Page() {
     })();
   }, []);
 
-  // ✅ 항상 호출되도록 상단에 위치 (null 안전)
   const hydrationPct = useMemo(() => {
     const cur = d?.hydration?.current_ml ?? 0;
     const goal = d?.hydration?.goal_ml ?? 1;
